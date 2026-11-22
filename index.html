@@ -941,11 +941,16 @@ function doPost(e) {
   <script>
     const STORAGE_KEY = 'money_and_trade_dashboard_idr_v4';
     const GAS_URL_KEY = 'money_and_trade_gas_url';
-    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbz2mJkHrLIqK7Wf3EAMfHiw7IuPv4CIKgPICb8uZehsKWfS-f1T1XTImHt0_gN5sCix/exec';
+    const LEGACY_GAS_URL = 'https://script.google.com/macros/s/AKfycbz2mJkHrLIqK7Wf3EAMfHiw7IuPv4CIKgPICb8uZehsKWfS-f1T1XTImHt0_gN5sCix/exec';
+    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzycWSnUvHNu7neCY4hakC3tk0VSufKRETdZAbbU2eJVxIU14Jj4TOKKAVTKUdNP1FvXw/exec';
 
     function getConfiguredGasUrl() {
       const saved = (localStorage.getItem(GAS_URL_KEY) || '').trim();
-      return saved || DEFAULT_GAS_URL;
+      if (!saved || saved === LEGACY_GAS_URL) {
+        localStorage.setItem(GAS_URL_KEY, DEFAULT_GAS_URL);
+        return DEFAULT_GAS_URL;
+      }
+      return saved;
     }
 
     const INCOME_CATEGORIES = [
