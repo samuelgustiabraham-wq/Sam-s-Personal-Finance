@@ -845,48 +845,48 @@
       </form>
     </div>
   </div>
-
-  <!-- MODAL: CLOUD SYNC (GOOGLE SHEETS) & BACKUP DATA -->
-  <div id="sync-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-    <div class="bg-[#FAF8F3] border-2 border-[#1E1E1E] rounded-3xl shadow-[6px_6px_0px_#1E1E1E] max-w-xl w-full p-6 relative max-h-[90vh] overflow-y-auto">
-      <button onclick="closeSyncModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white border border-[#1E1E1E] font-extrabold flex items-center justify-center">✕</button>
-      <span class="inline-block px-3 py-0.5 rounded-full bg-[#D6EEF5] border border-[#1E1E1E] text-[11px] font-extrabold uppercase mb-2">Sinkronisasi Lintas Perangkat</span>
-      <h3 class="font-editorial text-2xl font-bold mb-1">Cloud Sync &amp; Backup Data</h3>
-      <p class="text-xs font-medium text-[#1E1E1E]/75 mb-4">Hubungkan ke Google Sheets Apps Script agar data HP &amp; laptop selalu sinkron otomatis tanpa refresh.</p>
-
-      <!-- Google Apps Script Sync Section -->
-      <div class="p-4 rounded-2xl bg-white border-[1.5px] border-[#1E1E1E] space-y-3 mb-4">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-extrabold uppercase tracking-wider">1. Google Sheets Web App URL</span>
-          <span id="sync-status-badge" class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#FAF8F3] border border-[#1E1E1E]">Lokal Aktif</span>
-        </div>
-        <input type="url" id="gas-webapp-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 bg-[#FAF8F3] border border-[#1E1E1E] rounded-xl text-xs font-semibold focus:outline-none">
-        <div class="flex flex-wrap items-center gap-2">
-          <button type="button" onclick="saveGasUrl()" class="px-3.5 py-1.5 bg-[#FDF2B8] text-xs font-extrabold pill-btn">Simpan URL</button>
-          <button type="button" onclick="pushToCloud(false)" class="px-3.5 py-1.5 bg-[#DCECC7] text-xs font-extrabold pill-btn">↑ Kirim ke Cloud</button>
-          <button type="button" onclick="pullFromCloud(false)" class="px-3.5 py-1.5 bg-[#D6EEF5] text-xs font-extrabold pill-btn">↓ Tarik dari Cloud</button>
-        </div>
-
-        <details class="pt-2 border-t border-dashed border-[#1E1E1E]/25">
+        <details class="pt-2 border-t border-dashed border-[#1E1E1E]/25" open>
           <summary class="text-[11px] font-extrabold cursor-pointer text-[#1E1E1E]/80 hover:text-[#1E1E1E]">
-            Lihat Kode Google Apps Script (Sync Google Sheets)
+            Lihat Kode Google Apps Script (Wajib Deploy "New Version")
           </summary>
           <div class="mt-2 relative">
             <pre id="gas-snippet-code" class="p-3 rounded-xl bg-[#1E1E1E] text-[#FAF8F3] text-[10px] overflow-x-auto leading-relaxed">function doGet() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  var val = sheet.getRange("A1").getValue();
-  return ContentService.createTextOutput(val || "{}").setMimeType(ContentService.MimeType.JSON);
+  var props = PropertiesService.getScriptProperties();
+  var val = props.getProperty("MONEY_TRADE_STATE");
+  if (!val) {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+    val = sheet.getRange("A1").getValue();
+  }
+  return ContentService
+    .createTextOutput(val || "{}")
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    var body = JSON.parse(e.postData.contents);
-    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+    var raw = e.postData.contents;
+    var body = JSON.parse(raw);
     var dataToSave = body.state ? body.state : body;
-    sheet.getRange("A1").setValue(JSON.stringify(dataToSave));
-    return ContentService.createTextOutput('{"status":"ok"}').setMimeType(ContentService.MimeType.JSON);
+    var jsonStr = JSON.stringify(dataToSave);
+
+    // Simpan ke ScriptProperties (cepat & bebas limit 50rb karakter sel)
+    PropertiesService.getScriptProperties().setProperty("MONEY_TRADE_STATE", jsonStr);
+
+    // Backup ringkas ke sel A1 Spreadsheet jika muat
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+    if (jsonStr.length &lt; 49000) {
+      sheet.getRange("A1").setValue(jsonStr);
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "ok", savedAt: new Date().toISOString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
   } finally {
     lock.releaseLock();
   }
@@ -919,12 +919,13 @@ function doPost(e) {
 
   <script>
     const STORAGE_KEY = 'money_and_trade_dashboard_idr_v4';
-    const GAS_URL_KEY = 'money_and_trade_gas_url';
-    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbz2mJkHrLIqK7Wf3EAMfHiw7IuPv4CIKgPICb8uZehsKWfS-f1T1XTImHt0_gN5sCix/exec';
+    const GAS_URL_KEY = 'money_and_trade_gas_url_v2';
+    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzycWSnUvHNu7neCY4hakC3tk0VSufKRETdZAbbU2eJVxIU14Jj4TOKKAVTKUdNP1FvXw/exec';
 
     function getConfiguredGasUrl() {
       const saved = (localStorage.getItem(GAS_URL_KEY) || '').trim();
-      return saved || DEFAULT_GAS_URL;
+      if (!saved || saved.endsWith('/dev')) return DEFAULT_GAS_URL;
+      return saved;
     }
 
     const INCOME_CATEGORIES = [
@@ -2242,7 +2243,12 @@ function doPost(e) {
     }
 
     function saveGasUrl() {
-      const url = document.getElementById('gas-webapp-url').value.trim() || DEFAULT_GAS_URL;
+      const rawUrl = document.getElementById('gas-webapp-url').value.trim();
+      if (rawUrl.endsWith('/dev')) {
+        showToast('Gunakan Web App URL yang berakhiran /exec (bukan /dev)!', '⚠️');
+        return;
+      }
+      const url = rawUrl || DEFAULT_GAS_URL;
       localStorage.setItem(GAS_URL_KEY, url);
       document.getElementById('gas-webapp-url').value = url;
       updateHeaderSyncIndicator('syncing', 'Menghubungkan...');
@@ -2261,18 +2267,23 @@ function doPost(e) {
       updateHeaderSyncIndicator('syncing', 'Menyimpan...');
       try {
         if (!silent) showToast('Mengirim data ke Google Sheets...', '⏳');
-        await fetch(url, {
+        const res = await fetch(url, {
           method: 'POST',
-          mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'saveState', state: appState })
         });
-        lastLocalEditAt = Date.now();
-        updateHeaderSyncIndicator('synced', 'Synced ⚡');
-        if (!silent) showToast('Data berhasil dikirim ke Google Sheets!', '☁️');
+        const result = await res.json();
+        if (result && result.status === 'ok') {
+          lastLocalMutationAt = Date.now();
+          updateHeaderSyncIndicator('synced', 'Synced ⚡');
+          if (!silent) showToast('Data tersimpan di Google Sheets!', '☁️');
+        } else {
+          updateHeaderSyncIndicator('error', 'Script Error');
+          if (!silent) showToast('Apps Script error: ' + (result?.message || 'Cek deployment'), '❌');
+        }
       } catch (err) {
         updateHeaderSyncIndicator('error', 'Sync Gagal');
-        if (!silent) showToast('Gagal menghubungi Google Sheets URL', '❌');
+        if (!silent) showToast('Gagal menghubungi Apps Script (Pastikan Deploy New Version!)', '❌');
       } finally {
         isCloudSyncing = false;
       }
