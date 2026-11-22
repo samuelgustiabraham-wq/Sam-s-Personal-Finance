@@ -845,7 +845,29 @@
       </form>
     </div>
   </div>
-        <details class="pt-2 border-t border-dashed border-[#1E1E1E]/25" open>
+
+  <!-- MODAL: CLOUD SYNC (GOOGLE SHEETS) & BACKUP DATA -->
+  <div id="sync-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+    <div class="bg-[#FAF8F3] border-2 border-[#1E1E1E] rounded-3xl shadow-[6px_6px_0px_#1E1E1E] max-w-xl w-full p-6 relative max-h-[90vh] overflow-y-auto">
+      <button onclick="closeSyncModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white border border-[#1E1E1E] font-extrabold flex items-center justify-center">✕</button>
+      <span class="inline-block px-3 py-0.5 rounded-full bg-[#D6EEF5] border border-[#1E1E1E] text-[11px] font-extrabold uppercase mb-2">Sinkronisasi Lintas Perangkat</span>
+      <h3 class="font-editorial text-2xl font-bold mb-1">Cloud Sync &amp; Backup Data</h3>
+      <p class="text-xs font-medium text-[#1E1E1E]/75 mb-4">Terhubung otomatis ke Google Sheets Apps Script agar data HP &amp; laptop selalu sinkron, atau unduh file backup JSON.</p>
+
+      <!-- Google Apps Script Sync Section -->
+      <div class="p-4 rounded-2xl bg-white border-[1.5px] border-[#1E1E1E] space-y-3 mb-4">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-extrabold uppercase tracking-wider">1. Google Sheets Web App URL</span>
+          <span id="sync-status-badge" class="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-[#DCECC7] border border-[#1E1E1E]">Synced ⚡</span>
+        </div>
+        <input type="url" id="gas-webapp-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 bg-[#FAF8F3] border border-[#1E1E1E] rounded-xl text-xs font-semibold focus:outline-none">
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" onclick="saveGasUrl()" class="px-3.5 py-1.5 bg-[#FDF2B8] text-xs font-extrabold pill-btn">Simpan URL</button>
+          <button type="button" onclick="pushToCloud()" class="px-3.5 py-1.5 bg-[#DCECC7] text-xs font-extrabold pill-btn">↑ Kirim ke Cloud</button>
+          <button type="button" onclick="pullFromCloud()" class="px-3.5 py-1.5 bg-[#D6EEF5] text-xs font-extrabold pill-btn">↓ Tarik dari Cloud</button>
+        </div>
+
+        <details class="pt-2 border-t border-dashed border-[#1E1E1E]/25">
           <summary class="text-[11px] font-extrabold cursor-pointer text-[#1E1E1E]/80 hover:text-[#1E1E1E]">
             Lihat Kode Google Apps Script (Wajib Deploy "New Version")
           </summary>
